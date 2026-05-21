@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 
@@ -28,16 +29,20 @@ func main() {
 		logger.Log.Error().Msg(msg)
 	}
 
+	if cfg.EnvMode == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	router := gin.Default()
 	router.MaxMultipartMemory = 50 << 20
 
-	router.Static("/", cfg.Cwd+"/uploads")
+	router.Static("/public", filepath.Join(cfg.Cwd, "uploads"))
 
 	router.Use(middleware.Logger())
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
-	routes.SetupRoutes(router, cfg, handlers.NewUserHandler(db), handlers.NewAuthHandler(db, cfg))
+	routes.SetupRoutes(router, cfg, handlers.NewUserHandler(db), handlers.NewAuthHandler(db, cfg), handlers.NewUploadHandler(db, cfg))
 
 	addr := cfg.GetServerAddress()
 	logger.Log.Info().Msg(fmt.Sprintf("Server starting on %s", addr))

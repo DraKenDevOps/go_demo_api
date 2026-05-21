@@ -33,8 +33,8 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(200, FileUploadResponse{
-			Status: "error",
-			Error:  "No file provided",
+			Status:  "error",
+			Message: "No file provided",
 		})
 		return
 	}
@@ -42,8 +42,8 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 	// Validate file size
 	if file.Size > 10*1024*1024 { // 5MB
 		c.JSON(200, FileUploadResponse{
-			Status: "error",
-			Error:  "File size exceeds 5MB limit",
+			Status:  "error",
+			Message: "File size exceeds 5MB limit",
 		})
 		return
 	}
@@ -56,8 +56,8 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 	filepath := filepath.Join(uploadDir, file.Filename)
 	if err := c.SaveUploadedFile(file, filepath); err != nil {
 		c.JSON(200, FileUploadResponse{
-			Status: "error",
-			Error:  "Failed to save file",
+			Status:  "error",
+			Message: "Failed to save file",
 		})
 		return
 	}

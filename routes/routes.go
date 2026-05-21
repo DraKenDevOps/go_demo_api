@@ -8,7 +8,7 @@ import (
 	"go_demo_api/middleware"
 )
 
-func SetupRoutes(r *gin.Engine, cfg *config.Config, user *handlers.UserHandler, auth *handlers.AuthHandler) {
+func SetupRoutes(r *gin.Engine, cfg *config.Config, user *handlers.UserHandler, auth *handlers.AuthHandler, upload *handlers.UploadHandler) {
 	api := r.Group(cfg.BasePath)
 	{
 		api.POST("/login", auth.Login)
@@ -16,12 +16,8 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config, user *handlers.UserHandler, 
 		api.Use(middleware.AuthMiddleware(cfg)).GET("/users", user.GetUsers)
 		api.Use(middleware.AuthMiddleware(cfg)).GET("/user/:id", user.GetUser)
 		api.Use(middleware.AuthMiddleware(cfg)).POST("/create_user", user.CreateUser)
-		api.Use(middleware.AuthMiddleware(cfg)).PUT("/update_user", user.UpdateUser)
+		api.Use(middleware.AuthMiddleware(cfg)).PUT("/update_user/:id", user.UpdateUser)
 		api.Use(middleware.AuthMiddleware(cfg)).DELETE("/delete_user/:id", user.DeleteUser)
-		api.Use(middleware.AuthMiddleware(cfg)).POST("/upload")
+		api.Use(middleware.AuthMiddleware(cfg)).POST("/upload", upload.UploadFile)
 	}
 }
-
-// func AutoMigrate(db *gorm.DB) error {
-// 	return db.AutoMigrate(&models.User{})
-// }

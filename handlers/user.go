@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
 	"go_demo_api/models"
+	"go_demo_api/utils"
 )
 
 type UserHandler struct {
@@ -37,21 +37,21 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 	// Build query
 	var users []models.User
 	var total int64
-	var col string = `id, name, telephone, reportGroupId, role, status, 
-	DATE_FORMAT(createdAt, '%d/%m/%Y %r') as createdAt, 
-	DATE_FORMAT(updatedAt, '%d/%m/%Y %r') as updatedAt,
-	DATE_FORMAT(deletedAt, '%d/%m/%Y %r') as deletedAt`
+	var col string = `user_id, username, telephone, email, op_id, level, role_action, status, 
+	DATE_FORMAT(created_at, '%d/%m/%Y %r') as created_at, 
+	DATE_FORMAT(updated_at, '%d/%m/%Y %r') as updated_at,
+	DATE_FORMAT(deleted_at, '%d/%m/%Y %r') as deleted_at`
 
-	// col += "DATE_FORMAT(createdAt, '%d/%m/%Y %r') as createdAt"
-	// col += "DATE_FORMAT(updatedAt, '%d/%m/%Y %r') as updatedAt"
-	// col += "DATE_FORMAT(deletedAt, '%d/%m/%Y %r') as deletedAt"
+	// col += "DATE_FORMAT(created_at, '%d/%m/%Y %r') as created_at"
+	// col += "DATE_FORMAT(updated_at, '%d/%m/%Y %r') as updated_at"
+	// col += "DATE_FORMAT(deleted_at, '%d/%m/%Y %r') as deleted_at"
 
 	query := h.db.Model(&models.User{}).Select(col)
 
 	// Apply text filter if provided
 	if text != "" {
 		text = "%" + text + "%"
-		query = query.Where("name LIKE ? OR telephone LIKE ?", text, text)
+		query = query.Where("username LIKE ? OR telephone LIKE ?", text, text)
 	}
 
 	// Get total count for pagination info
@@ -64,7 +64,6 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"data":        users,
 		"page":        pageInt,
-		"page_size":   pageSize,
 		"total":       total,
 		"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
 	})
@@ -72,8 +71,12 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 
 func (h *UserHandler) GetUser(c *gin.Context) {
 	id := c.Param("id")
+	var col string = `user_id, username, telephone, email, op_id, level, role_action, status, 
+	DATE_FORMAT(created_at, '%d/%m/%Y %r') as created_at, 
+	DATE_FORMAT(updated_at, '%d/%m/%Y %r') as updated_at,
+	DATE_FORMAT(deleted_at, '%d/%m/%Y %r') as deleted_at`
 	var user models.User
-	err := h.db.First(&user, id).Error
+	err := h.db.Select(col).First(&user, id).Error
 	if err != nil {
 		c.JSON(200, gin.H{"status": "error", "message": "User not found", "data": user})
 		return
@@ -84,35 +87,88 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 func (h *UserHandler) CreateUser(c *gin.Context) {
 	var user models.SaveUser
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(200, gin.H{"error": err.Error()})
+		fmt.Printf("Failed to read request body: %v\n", err)
+		c.JSON(200, gin.H{"status": "error", "message": "Invalid request body"})
 		return
 	}
-	h.db.Create(&user)
-	c.JSON(http.StatusCreated, gin.H{"data": user})
+
+	if user.Password != nil || *user.Password != "" {
+		hash, err := utils.HashPassword(*user.Password)
+		if err != nil {
+			fmt.Printf("Failed to hash password: %v\n", err)
+			c.JSON(200, gin.H{"status": "error", "message": "Failed to create user"})
+			return
+		}
+		user.Password = &hash
+	}
+
+	if user.Status == nil || *user.Status == "" {
+		status := "ACTIVE"
+		user.Status = &status
+	}
+
+	err := h.db.Create(&user).Error
+	if err != nil {
+		fmt.Printf("Failed to create user: %v\n", err)
+		c.JSON(200, gin.H{"status": "error", "message": "Failed to create user"})
+		return
+	}
+
+	c.JSON(200, gin.H{"status": "success", "message": "User created successfully"})
 }
 
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	id := c.Param("id")
-	var user models.User
+	var user models.SaveUserPassword
 	if err := h.db.First(&user, id).Error; err != nil {
-		c.JSON(200, gin.H{"error": "User not found"})
+		fmt.Printf("User not found: %v\n", err)
+		c.JSON(200, gin.H{"status": "error", "message": "User not found"})
 		return
 	}
 	var input models.SaveUser
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(200, gin.H{"error": err.Error()})
+		fmt.Printf("Failed to read request body: %v\n", err)
+		c.JSON(200, gin.H{"status": "error", "message": "Invalid request body"})
 		return
 	}
-	h.db.Model(&user).Updates(input)
-	c.JSON(200, gin.H{"data": user})
+
+	// TODO: if in handler, check if password is not in request body, then keep existing password
+
+	// TODO: if in handler, check if password is provided and different from existing one, then hash it before saving
+	if input.Password != nil || *input.Password != "" {
+		valid := utils.CheckPassword(*input.Password, user.Password)
+		if !valid {
+			hash, err := utils.HashPassword(*input.Password)
+			if err != nil {
+				fmt.Printf("Failed to hash password: %v\n", err)
+				c.JSON(200, gin.H{"status": "error", "message": "Failed to update user"})
+				return
+			}
+			input.Password = &hash
+		}
+	}
+
+	if input.Status == nil || *input.Status == "" {
+		status := "ACTIVE"
+		input.Status = &status
+	}
+
+	err := h.db.Model(&user).Updates(input).Where("user_id = ?", id).Error
+	if err != nil {
+		fmt.Printf("Failed to update user: %v\n", err)
+		c.JSON(200, gin.H{"status": "error", "message": "Failed to update user"})
+		return
+	}
+	c.JSON(200, gin.H{"status": "success", "message": "User updated successfully"})
 }
 
 func (h *UserHandler) DeleteUser(c *gin.Context) {
 	id := c.Param("id")
 	var user models.User
-	if err := h.db.Delete(&user, id).Error; err != nil {
-		c.JSON(200, gin.H{"error": "User not found"})
+	err := h.db.Delete(&user, id).Error
+	if err != nil {
+		c.JSON(200, gin.H{"status": "error", "message": "User not found"})
 		return
 	}
-	c.JSON(200, gin.H{"message": "User deleted"})
+	c.JSON(200, gin.H{"status": "success", "message": "User deleted"})
 }

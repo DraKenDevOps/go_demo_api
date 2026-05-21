@@ -58,18 +58,20 @@ func Verify(text string, cfg *config.Config) (jwt.MapClaims, error) {
 	return nil, fmt.Errorf("Invalid token")
 }
 
-func CreateToken(userID uint, reportGroupId *uint, userName, telephone, role string, cfg *config.Config) (string, error) {
+func CreateToken(userID uint, opId *uint, userName, email, telephone, level, roleAction string, cfg *config.Config) (string, error) {
 	claims := jwt.MapClaims{
-		"sub":           "Json Web Token subject",
-		"aud":           "Json Web Token audience",
-		"iss":           "Json Web Token issuer",
-		"exp":           time.Now().Add(24 * time.Hour).Unix(),
-		"iat":           time.Now().Unix(),
-		"user_id":       userID,
-		"user_name":     userName,
-		"telephone":     telephone,
-		"role":          role,
-		"reportGroupId": reportGroupId,
+		"sub":         "Json Web Token subject",
+		"aud":         "Json Web Token audience",
+		"iss":         "Json Web Token issuer",
+		"exp":         time.Now().Add(24 * time.Hour).Unix(),
+		"iat":         time.Now().Unix(),
+		"user_id":     userID,
+		"username":    userName,
+		"email":       email,
+		"telephone":   telephone,
+		"level":       level,
+		"role_action": roleAction,
+		"op_id":       opId,
 	}
 
 	return Sign(claims, cfg)
