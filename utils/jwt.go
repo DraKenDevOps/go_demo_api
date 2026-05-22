@@ -10,6 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"go_demo_api/config"
+	"go_demo_api/models"
 )
 
 func Sign(claims jwt.MapClaims, cfg *config.Config) (string, error) {
@@ -58,7 +59,7 @@ func Verify(text string, cfg *config.Config) (jwt.MapClaims, error) {
 	return nil, fmt.Errorf("Invalid token")
 }
 
-func CreateToken(userID uint, opId *uint, userName, email, telephone, level, roleAction string, cfg *config.Config) (string, error) {
+func CreateToken(userID uint, opId *uint, userName, email, telephone string, level models.UserLevel, roleAction models.UserRoleAction, cfg *config.Config) (string, error) {
 	claims := jwt.MapClaims{
 		"sub":         "Json Web Token subject",
 		"aud":         "Json Web Token audience",

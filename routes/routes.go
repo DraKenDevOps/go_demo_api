@@ -13,11 +13,12 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config, user *handlers.UserHandler, 
 	{
 		api.POST("/login", auth.Login)
 		api.Use(middleware.AuthMiddleware(cfg)).GET("/refresh", auth.Refresh)
-		api.Use(middleware.AuthMiddleware(cfg)).GET("/users", user.GetUsers)
+		api.Use(middleware.AuthMiddleware(cfg)).GET("/users", user.GetUsersRaw)
 		api.Use(middleware.AuthMiddleware(cfg)).GET("/user/:id", user.GetUser)
 		api.Use(middleware.AuthMiddleware(cfg)).POST("/create_user", user.CreateUser)
 		api.Use(middleware.AuthMiddleware(cfg)).PUT("/update_user/:id", user.UpdateUser)
-		api.Use(middleware.AuthMiddleware(cfg)).DELETE("/delete_user/:id", user.DeleteUser)
+		api.Use(middleware.AuthMiddleware(cfg)).PATCH("/delete_user/:id", user.SoftDeleteUser)
+		api.Use(middleware.AuthMiddleware(cfg)).DELETE("/delete_user/:id", user.HardDeleteUser)
 		api.Use(middleware.AuthMiddleware(cfg)).POST("/upload", upload.UploadFile)
 	}
 }

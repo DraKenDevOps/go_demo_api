@@ -56,18 +56,25 @@ func GetUserClaim(c *gin.Context) models.JwtUserClaim {
 	userID := uint(claims["user_id"].(float64))
 	userName := claims["username"].(string)
 	email := claims["email"].(string)
-	roleAction := claims["role_action"].(string)
-	level := claims["level"].(string)
 	telephone := claims["telephone"].(string)
+
+	roleAction := claims["role_action"]
+	level := claims["level"]
 	opId := claims["op_id"]
 
 	user := models.JwtUserClaim{
-		UserId:     userID,
-		Telephone:  telephone,
-		Username:   userName,
-		Email:      email,
-		Level:      level,
-		RoleAction: roleAction,
+		UserId:    userID,
+		Telephone: telephone,
+		Username:  userName,
+		Email:     email,
+	}
+
+	if roleAction != "" {
+		user.RoleAction = models.UserRoleAction(roleAction.(string))
+	}
+
+	if level != "" {
+		user.Level = models.UserLevel(level.(string))
 	}
 
 	if opId != nil {

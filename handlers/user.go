@@ -19,48 +19,138 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 }
 
 func (h *UserHandler) GetUsers(c *gin.Context) {
-	// Get query parameters
 	page := c.DefaultQuery("page", "1")
 	text := c.Query("text")
+	deleted := c.Query("get_deleted") == "true"
 
-	// Convert page to integer
 	var pageInt int
 	fmt.Sscanf(page, "%d", &pageInt)
 	if pageInt < 1 {
 		pageInt = 1
 	}
 
-	// Pagination settings
 	pageSize := 10
 	offset := (pageInt - 1) * pageSize
 
-	// Build query
 	var users []models.User
 	var total int64
 	var col string = `user_id, username, telephone, email, op_id, level, role_action, status, 
 	DATE_FORMAT(created_at, '%d/%m/%Y %r') as created_at, 
 	DATE_FORMAT(updated_at, '%d/%m/%Y %r') as updated_at,
-	DATE_FORMAT(deleted_at, '%d/%m/%Y %r') as deleted_at`
-
-	// col += "DATE_FORMAT(created_at, '%d/%m/%Y %r') as created_at"
-	// col += "DATE_FORMAT(updated_at, '%d/%m/%Y %r') as updated_at"
-	// col += "DATE_FORMAT(deleted_at, '%d/%m/%Y %r') as deleted_at"
+	CASE
+		WHEN deleted_at IS NULL THEN NULL
+		ELSE DATE_FORMAT(deleted_at, '%d/%m/%Y %r')
+	END as deleted_at`
 
 	query := h.db.Model(&models.User{}).Select(col)
 
-	// Apply text filter if provided
+	if deleted {
+		query.Unscoped()
+	}
 	if text != "" {
 		text = "%" + text + "%"
 		query = query.Where("username LIKE ? OR telephone LIKE ?", text, text)
 	}
 
-	// Get total count for pagination info
 	query.Count(&total)
 
-	// Apply pagination and get results
 	query.Offset(offset).Limit(pageSize).Find(&users)
 
-	// Return response with pagination metadata
+	c.JSON(200, gin.H{
+		"data":        users,
+		"page":        pageInt,
+		"total":       total,
+		"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
+	})
+}
+
+func (h *UserHandler) GetUsersRaw(c *gin.Context) {
+	page := c.DefaultQuery("page", "1")
+	text := c.Query("text")
+	deleted := c.Query("get_deleted") == "true"
+
+	var pageInt int
+	fmt.Sscanf(page, "%d", &pageInt)
+
+	if pageInt < 1 {
+		pageInt = 1
+	}
+
+	pageSize := 10
+	offset := (pageInt - 1) * pageSize
+
+	var users []models.User
+	var total int64
+
+	baseQuery := `
+		FROM users
+		WHERE 1=1
+	`
+
+	var args []interface{}
+
+	// exclude soft deleted
+	if !deleted {
+		baseQuery += " AND deleted_at IS NULL"
+	}
+
+	// search
+	if text != "" {
+		baseQuery += `
+			AND (
+				username LIKE ?
+				OR telephone LIKE ?
+			)
+		`
+
+		search := "%" + text + "%"
+		args = append(args, search, search)
+	}
+
+	// count query
+	countQuery := "SELECT COUNT(*) " + baseQuery
+
+	err := h.db.Raw(countQuery, args...).Scan(&total).Error
+	if err != nil {
+		fmt.Printf("Failed to count users: %v\n", err)
+
+		c.JSON(200, gin.H{
+			"status":  "error",
+			"message": "Failed to get users",
+		})
+		return
+	}
+
+	// data query
+	dataQuery := `SELECT
+		user_id,
+		username,
+		telephone,
+		email,
+		op_id,
+		level,
+		role_action,
+		status,
+		DATE_FORMAT(created_at, '%d/%m/%Y %r') as created_at, 
+		DATE_FORMAT(updated_at, '%d/%m/%Y %r') as updated_at,
+		DATE_FORMAT(deleted_at, '%d/%m/%Y %r') as deleted_at
+	` + baseQuery + `
+		LIMIT ?
+		OFFSET ?`
+
+	args = append(args, pageSize, offset)
+
+	err = h.db.Raw(dataQuery, args...).Scan(&users).Error
+	if err != nil {
+		fmt.Printf("Failed to get users: %v\n", err)
+
+		c.JSON(200, gin.H{
+			"status":  "error",
+			"message": "Failed to get users",
+		})
+		return
+	}
+
 	c.JSON(200, gin.H{
 		"data":        users,
 		"page":        pageInt,
@@ -71,12 +161,20 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 
 func (h *UserHandler) GetUser(c *gin.Context) {
 	id := c.Param("id")
+	deleted := c.Query("get_deleted") == "true"
 	var col string = `user_id, username, telephone, email, op_id, level, role_action, status, 
 	DATE_FORMAT(created_at, '%d/%m/%Y %r') as created_at, 
 	DATE_FORMAT(updated_at, '%d/%m/%Y %r') as updated_at,
-	DATE_FORMAT(deleted_at, '%d/%m/%Y %r') as deleted_at`
+	CASE
+		WHEN deleted_at IS NULL THEN NULL
+		ELSE DATE_FORMAT(deleted_at, '%d/%m/%Y %r')
+	END as deleted_at`
 	var user models.User
-	err := h.db.Select(col).First(&user, id).Error
+	query := h.db.Select(col).First(&user, id)
+	if deleted {
+		query.Unscoped()
+	}
+	err := query.Error
 	if err != nil {
 		c.JSON(200, gin.H{"status": "error", "message": "User not found", "data": user})
 		return
@@ -102,8 +200,18 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		user.Password = &hash
 	}
 
+	if user.Level == nil || *user.Level == "" {
+		lvl := models.UserLevelSupport
+		user.Level = &lvl
+	}
+
+	if user.RoleAction == nil || *user.RoleAction == "" {
+		ra := models.UserRoleQuery
+		user.RoleAction = &ra
+	}
+
 	if user.Status == nil || *user.Status == "" {
-		status := "ACTIVE"
+		status := models.UserStatusActive
 		user.Status = &status
 	}
 
@@ -119,7 +227,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	id := c.Param("id")
-	var user models.SaveUserPassword
+	var user models.UserTable
 	if err := h.db.First(&user, id).Error; err != nil {
 		fmt.Printf("User not found: %v\n", err)
 		c.JSON(200, gin.H{"status": "error", "message": "User not found"})
@@ -132,10 +240,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	// TODO: if in handler, check if password is not in request body, then keep existing password
-
-	// TODO: if in handler, check if password is provided and different from existing one, then hash it before saving
-	if input.Password != nil || *input.Password != "" {
+	if input.Password != nil && *input.Password != "" {
 		valid := utils.CheckPassword(*input.Password, user.Password)
 		if !valid {
 			hash, err := utils.HashPassword(*input.Password)
@@ -146,14 +251,25 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 			}
 			input.Password = &hash
 		}
+	} else {
+		input.Password = &user.Password
+	}
+
+	if input.Level == nil || *input.Level == "" {
+		input.Level = &user.Level
+	}
+
+	if input.RoleAction == nil || *input.RoleAction == "" {
+		input.RoleAction = &user.RoleAction
 	}
 
 	if input.Status == nil || *input.Status == "" {
-		status := "ACTIVE"
-		input.Status = &status
+		input.Status = &user.Status
 	}
 
-	err := h.db.Model(&user).Updates(input).Where("user_id = ?", id).Error
+	fmt.Printf("Update data: %+v\n", input)
+
+	err := h.db.Model(&user).Where("user_id = ?", id).Update("updated_at", gorm.Expr("NOW()")).Updates(input).Error
 	if err != nil {
 		fmt.Printf("Failed to update user: %v\n", err)
 		c.JSON(200, gin.H{"status": "error", "message": "Failed to update user"})
@@ -162,11 +278,25 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "success", "message": "User updated successfully"})
 }
 
-func (h *UserHandler) DeleteUser(c *gin.Context) {
+func (h *UserHandler) SoftDeleteUser(c *gin.Context) {
 	id := c.Param("id")
-	var user models.User
-	err := h.db.Delete(&user, id).Error
+	var user models.DeleteUser
+	// err := h.db.Model(&user).Where("user_id = ?", id).Updates(user).Error
+	err := h.db.Where("user_id = ?", id).Delete(&user).Error
 	if err != nil {
+		fmt.Printf("Failed to doft delete user: %v\n", err)
+		c.JSON(200, gin.H{"status": "error", "message": "User not found"})
+		return
+	}
+	c.JSON(200, gin.H{"status": "success", "message": "User deleted"})
+}
+
+func (h *UserHandler) HardDeleteUser(c *gin.Context) {
+	id := c.Param("id")
+	var user models.UserTable
+	err := h.db.Unscoped().Where("user_id = ?", id).Delete(&user, id).Error
+	if err != nil {
+		fmt.Printf("Failed to hard delete user: %v\n", err)
 		c.JSON(200, gin.H{"status": "error", "message": "User not found"})
 		return
 	}
