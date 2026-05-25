@@ -5,9 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
-
-	"go_demo_api/config"
 )
 
 type FileUploadResponse struct {
@@ -19,16 +16,16 @@ type FileUploadResponse struct {
 	Error    string `json:"error,omitempty"`
 }
 
-type UploadHandler struct {
-	db  *gorm.DB
-	cfg *config.Config
-}
+// type UploadHandler struct {
+// 	db  *gorm.DB
+// 	cfg *config.Config
+// }
 
-func NewUploadHandler(db *gorm.DB, cfg *config.Config) *UploadHandler {
-	return &UploadHandler{db: db, cfg: cfg}
-}
+// func NewUploadHandler(db *gorm.DB, cfg *config.Config) *UploadHandler {
+// 	return &UploadHandler{db: db, cfg: cfg}
+// }
 
-func (h *UploadHandler) UploadFile(c *gin.Context) {
+func (h *ApiHandler) UploadFile(c *gin.Context) {
 	// Get file
 	file, err := c.FormFile("file")
 	if err != nil {

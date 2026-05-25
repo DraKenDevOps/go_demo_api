@@ -18,7 +18,7 @@ type LoginResponse struct {
 	Message string `json:"message"`
 }
 
-func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
+func AuthChecker(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accessToken := c.GetHeader("X-Access-Token")
 		authorization := c.GetHeader("Authorization")

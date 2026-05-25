@@ -2,6 +2,7 @@ package logger
 
 import (
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -26,14 +27,16 @@ func Init(cfg *config.Config) error {
 		With().
 		Timestamp().
 		Str("service", cfg.ServiceName).
+		Str("version", cfg.Version).
+		Str("mode", cfg.EnvMode).
 		Logger()
 
-	go dailyRotate(cfg.ServiceName)
+	go dailyRotate(cfg.ServiceName, cfg)
 
 	return nil
 }
 
-func dailyRotate(serviceName string) {
+func dailyRotate(serviceName string, cfg *config.Config) {
 	for {
 		now := time.Now()
 		nextRotate := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
@@ -41,8 +44,8 @@ func dailyRotate(serviceName string) {
 
 		time.Sleep(duration)
 
-		oldFile := "logs/" + serviceName + ".log"
-		newFile := "logs/" + now.Format("20060102") + serviceName + ".log"
+		oldFile := filepath.Join("logs/", serviceName+".log")
+		newFile := filepath.Join("logs/", now.Format("20060102")+"_"+serviceName+".log")
 
 		os.Rename(oldFile, newFile)
 
@@ -55,6 +58,8 @@ func dailyRotate(serviceName string) {
 			With().
 			Timestamp().
 			Str("service", serviceName).
+			Str("version", cfg.Version).
+			Str("mode", cfg.EnvMode).
 			Logger()
 	}
 }

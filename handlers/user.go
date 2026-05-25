@@ -10,15 +10,16 @@ import (
 	"go_demo_api/utils"
 )
 
-type UserHandler struct {
-	db *gorm.DB
-}
+// type UserHandler struct {
+// 	db  *gorm.DB
+// 	cfg *config.Config
+// }
 
-func NewUserHandler(db *gorm.DB) *UserHandler {
-	return &UserHandler{db: db}
-}
+// func NewUserHandler(db *gorm.DB, cfg *config.Config) *UserHandler {
+// 	return &UserHandler{db: db, cfg: cfg}
+// }
 
-func (h *UserHandler) GetUsers(c *gin.Context) {
+func (h *ApiHandler) GetUsers(c *gin.Context) {
 	page := c.DefaultQuery("page", "1")
 	text := c.Query("text")
 	deleted := c.Query("get_deleted") == "true"
@@ -64,7 +65,7 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 	})
 }
 
-func (h *UserHandler) GetUsersRaw(c *gin.Context) {
+func (h *ApiHandler) GetUsersRaw(c *gin.Context) {
 	page := c.DefaultQuery("page", "1")
 	text := c.Query("text")
 	deleted := c.Query("get_deleted") == "true"
@@ -159,7 +160,7 @@ func (h *UserHandler) GetUsersRaw(c *gin.Context) {
 	})
 }
 
-func (h *UserHandler) GetUser(c *gin.Context) {
+func (h *ApiHandler) GetUser(c *gin.Context) {
 	id := c.Param("id")
 	deleted := c.Query("get_deleted") == "true"
 	var col string = `user_id, username, telephone, email, op_id, level, role_action, status, 
@@ -182,7 +183,7 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "success", "data": user})
 }
 
-func (h *UserHandler) CreateUser(c *gin.Context) {
+func (h *ApiHandler) CreateUser(c *gin.Context) {
 	var user models.SaveUser
 	if err := c.ShouldBindJSON(&user); err != nil {
 		fmt.Printf("Failed to read request body: %v\n", err)
@@ -225,7 +226,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "success", "message": "User created successfully"})
 }
 
-func (h *UserHandler) UpdateUser(c *gin.Context) {
+func (h *ApiHandler) UpdateUser(c *gin.Context) {
 	id := c.Param("id")
 	var user models.UserTable
 	if err := h.db.First(&user, id).Error; err != nil {
@@ -278,20 +279,22 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "success", "message": "User updated successfully"})
 }
 
-func (h *UserHandler) SoftDeleteUser(c *gin.Context) {
+func (h *ApiHandler) SoftDeleteUser(c *gin.Context) {
 	id := c.Param("id")
 	var user models.DeleteUser
 	// err := h.db.Model(&user).Where("user_id = ?", id).Updates(user).Error
 	err := h.db.Where("user_id = ?", id).Delete(&user).Error
 	if err != nil {
-		fmt.Printf("Failed to doft delete user: %v\n", err)
+		fmt.Printf("Failed to soft delete user: %v\n", err)
 		c.JSON(200, gin.H{"status": "error", "message": "User not found"})
 		return
 	}
-	c.JSON(200, gin.H{"status": "success", "message": "User deleted"})
+
+	msg := "User deleted"
+	c.JSON(200, gin.H{"status": "success", "message": msg})
 }
 
-func (h *UserHandler) HardDeleteUser(c *gin.Context) {
+func (h *ApiHandler) HardDeleteUser(c *gin.Context) {
 	id := c.Param("id")
 	var user models.UserTable
 	err := h.db.Unscoped().Where("user_id = ?", id).Delete(&user, id).Error
@@ -300,5 +303,6 @@ func (h *UserHandler) HardDeleteUser(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "error", "message": "User not found"})
 		return
 	}
-	c.JSON(200, gin.H{"status": "success", "message": "User deleted"})
+	msg := "User deleted"
+	c.JSON(200, gin.H{"status": "success", "message": msg})
 }

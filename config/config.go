@@ -32,6 +32,7 @@ type Config struct {
 	MQTTPassword       string
 	MQTTPath           string
 	MQTTTopic          string
+	Version            string
 }
 
 func Load() (*Config, error) {
@@ -64,6 +65,7 @@ func Load() (*Config, error) {
 		MQTTPassword:       getEnv("MQTT_PASSWORD", ""),
 		MQTTPath:           getEnv("MQTT_PATH", "mqtt"),
 		MQTTTopic:          getEnv("MQTT_TOPIC", "demo"),
+		Version:            getEnv("VERSION", "1.0.0"),
 	}, nil
 }
 

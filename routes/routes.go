@@ -8,17 +8,17 @@ import (
 	"go_demo_api/middleware"
 )
 
-func SetupRoutes(r *gin.Engine, cfg *config.Config, user *handlers.UserHandler, auth *handlers.AuthHandler, upload *handlers.UploadHandler) {
+func SetupRoutes(r *gin.Engine, cfg *config.Config, apiHandler *handlers.ApiHandler) {
 	api := r.Group(cfg.BasePath)
 	{
-		api.POST("/login", auth.Login)
-		api.Use(middleware.AuthMiddleware(cfg)).GET("/refresh", auth.Refresh)
-		api.Use(middleware.AuthMiddleware(cfg)).GET("/users", user.GetUsersRaw)
-		api.Use(middleware.AuthMiddleware(cfg)).GET("/user/:id", user.GetUser)
-		api.Use(middleware.AuthMiddleware(cfg)).POST("/create_user", user.CreateUser)
-		api.Use(middleware.AuthMiddleware(cfg)).PUT("/update_user/:id", user.UpdateUser)
-		api.Use(middleware.AuthMiddleware(cfg)).PATCH("/delete_user/:id", user.SoftDeleteUser)
-		api.Use(middleware.AuthMiddleware(cfg)).DELETE("/delete_user/:id", user.HardDeleteUser)
-		api.Use(middleware.AuthMiddleware(cfg)).POST("/upload", upload.UploadFile)
+		api.POST("/login", apiHandler.Login)
+		api.Use(middleware.AuthChecker(cfg)).GET("/refresh", apiHandler.Refresh)
+		api.Use(middleware.AuthChecker(cfg)).GET("/users", apiHandler.GetUsersRaw)
+		api.Use(middleware.AuthChecker(cfg)).GET("/user/:id", apiHandler.GetUser)
+		api.Use(middleware.AuthChecker(cfg)).POST("/create_user", apiHandler.CreateUser)
+		api.Use(middleware.AuthChecker(cfg)).PUT("/update_user/:id", apiHandler.UpdateUser)
+		api.Use(middleware.AuthChecker(cfg)).PATCH("/delete_user/:id", apiHandler.SoftDeleteUser)
+		api.Use(middleware.AuthChecker(cfg)).DELETE("/delete_user/:id", apiHandler.HardDeleteUser)
+		api.Use(middleware.AuthChecker(cfg)).POST("/upload", apiHandler.UploadFile)
 	}
 }

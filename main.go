@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -36,13 +37,13 @@ func main() {
 	router := gin.Default()
 	router.MaxMultipartMemory = 50 << 20
 
-	router.Static("/public", filepath.Join(cfg.Cwd, "uploads"))
+	router.Static("/static", filepath.Join(cfg.Cwd, "uploads"))
 
-	router.Use(middleware.Logger())
+	router.Use(middleware.Logger("/api/upload"))
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
+		c.JSON(200, gin.H{"status": "ok", "timestamp": time.Now().Unix(), "uptime": time.Since(time.Unix(0, 0)) / time.Second, "version": cfg.Version})
 	})
-	routes.SetupRoutes(router, cfg, handlers.NewUserHandler(db), handlers.NewAuthHandler(db, cfg), handlers.NewUploadHandler(db, cfg))
+	routes.SetupRoutes(router, cfg, handlers.NewApiHandler(db, cfg))
 
 	addr := cfg.GetServerAddress()
 	logger.Log.Info().Msg(fmt.Sprintf("Server starting on %s", addr))

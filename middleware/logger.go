@@ -37,17 +37,17 @@ func Logger(skipPaths ...string) gin.HandlerFunc {
 		start := time.Now()
 		method := c.Request.Method
 
-		var requestBody []byte
+		var reqbody []byte
 		if c.Request.Body != nil {
-			requestBody, _ = io.ReadAll(c.Request.Body)
-			c.Request.Body = io.NopCloser(bytes.NewBuffer(requestBody))
+			reqbody, _ = io.ReadAll(c.Request.Body)
+			c.Request.Body = io.NopCloser(bytes.NewBuffer(reqbody))
 		}
 
 		logger.Log.Info().
-			Str("request_id", requestID).
+			Str("requestId", requestID).
 			Str("method", method).
 			Str("path", path).
-			Str("request_body", string(requestBody)).
+			Str("reqbody", string(reqbody)).
 			Msg("Request")
 
 		rw := &responseWriter{
@@ -60,13 +60,13 @@ func Logger(skipPaths ...string) gin.HandlerFunc {
 
 		duration := time.Since(start)
 		statusCode := c.Writer.Status()
-		responseBody := rw.body.String()
+		resbody := rw.body.String()
 
 		logger.Log.Info().
-			Str("request_id", requestID).
+			Str("requestId", requestID).
 			Int("status", statusCode).
 			Dur("duration", duration).
-			Str("response_body", responseBody).
+			Str("respbody", resbody).
 			Msg("Response")
 	}
 }

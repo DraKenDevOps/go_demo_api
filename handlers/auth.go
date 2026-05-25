@@ -4,23 +4,21 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 
-	"go_demo_api/config"
 	"go_demo_api/logger"
 	"go_demo_api/middleware"
 	"go_demo_api/models"
 	"go_demo_api/utils"
 )
 
-type AuthHandler struct {
-	db  *gorm.DB
-	cfg *config.Config
-}
+// type AuthHandler struct {
+// 	db  *gorm.DB
+// 	cfg *config.Config
+// }
 
-func NewAuthHandler(db *gorm.DB, cfg *config.Config) *AuthHandler {
-	return &AuthHandler{db: db, cfg: cfg}
-}
+// func NewAuthHandler(db *gorm.DB, cfg *config.Config) *AuthHandler {
+// 	return &AuthHandler{db: db, cfg: cfg}
+// }
 
 type LoginRequest struct {
 	Username string `json:"username" binding:"required"`
@@ -46,7 +44,7 @@ type RefreshResponse struct {
 	Message     string              `json:"message"`
 }
 
-func (h *AuthHandler) Login(c *gin.Context) {
+func (h *ApiHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(200, gin.H{"status": "error", "message": "Failed to read request body"})
@@ -93,7 +91,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 }
 
-func (h *AuthHandler) Refresh(c *gin.Context) {
+func (h *ApiHandler) Refresh(c *gin.Context) {
 	accessToken := c.GetString("jwt")
 	if accessToken == "" {
 		c.JSON(200, gin.H{"status": "error", "message": "Failed to authentication"})
