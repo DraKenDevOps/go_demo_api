@@ -3,3 +3,6 @@ run:
 
 dev:
     air
+
+build:
+	go build -o server.exe

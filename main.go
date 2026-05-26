@@ -41,7 +41,13 @@ func main() {
 
 	router.Use(middleware.Logger("/api/upload"))
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok", "timestamp": time.Now().Unix(), "uptime": time.Since(time.Unix(0, 0)) / time.Second, "version": cfg.Version})
+		res := gin.H{
+			"status":    "ok",
+			"timestamp": time.Now().Unix(),
+			"uptime":    time.Since(time.Unix(0, 0)) / time.Second,
+			"version":   cfg.Version,
+		}
+		c.JSON(200, res)
 	})
 	routes.SetupRoutes(router, cfg, handlers.NewApiHandler(db, cfg))
 
