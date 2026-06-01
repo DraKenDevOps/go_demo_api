@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"go_demo_api/logger"
-	"go_demo_api/middleware"
+	middleware "go_demo_api/middlewares"
 	"go_demo_api/models"
 	"go_demo_api/utils"
 )

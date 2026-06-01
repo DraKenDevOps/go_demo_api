@@ -18,7 +18,7 @@ import (
 	"go_demo_api/handlers"
 	"go_demo_api/jobs"
 	"go_demo_api/logger"
-	"go_demo_api/middleware"
+	middleware "go_demo_api/middlewares"
 	"go_demo_api/routes"
 	"go_demo_api/scheduler"
 )

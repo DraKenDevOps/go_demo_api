@@ -5,7 +5,7 @@ import (
 
 	"go_demo_api/config"
 	"go_demo_api/handlers"
-	"go_demo_api/middleware"
+	middleware "go_demo_api/middlewares"
 )
 
 func SetupRoutes(r *gin.Engine, cfg *config.Config, apiHandler *handlers.ApiHandler) {
