@@ -13,7 +13,7 @@ RUN apk add --no-cache tzdata ca-certificates \
 WORKDIR /app
 COPY --from=build /out/server /app/server
 USER app
-ENV ENV_MODE=production PORT=8000 TZ=Asia/Bangkok
+# ENV ENV_MODE=production PORT=8000 TZ=Asia/Bangkok
 EXPOSE 8000
 VOLUME ["/app/logs", "/app/uploads"]
 HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1:${PORT}/health || exit 1
